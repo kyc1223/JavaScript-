@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script>
+    var image;  // 2차원 배열 (이미지 --> 2차원 배열)
+    var ROW=5, COL=4; // 행/열을 지정 후 작업 --> 이미지의 사이즈를 알아낸 후 진행...
+
+    image = new Array(ROW); 
+    for (var i=0; i<5; i++)
+        image[i] = new Array(COL);
+
+    // 이미지 --> 배열로 읽어들이기 (Loading)
+    for(var i=0; i<ROW; i++) {
+        for(var k=0; k<COL; k++) {
+            image[i][k] = Math.floor(Math.random() * 256);
+        }
+    }
+
+    // 이미지를 출력하기
+    for(var i=0; i<ROW; i++) {
+        for(var k=0; k<COL; k++) {
+            document.write( String(image[i][k]).padStart(3,'0') + " ");
+        }
+        document.write("<br>");
+    }
+    document.write("<br>");
+
+    // 영상처리 1  : 사진을 밝게 처리하자.
+    for(var i=0; i<ROW; i++) {
+        for(var k=0; k<COL; k++) {
+            if (image[i][k] + 50 > 255)
+                image[i][k] = 255;
+            else 
+                image[i][k] += 50;
+        }
+    }
+
+    // 이미지를 출력하기
+    for(var i=0; i<ROW; i++) {
+        for(var k=0; k<COL; k++) {
+            document.write( String(image[i][k]).padStart(3,'0') + " ");
+        }
+        document.write("<br>");
+    }
+    document.write("<br>");
+
+</script>
+</head>
+<body>
+
+</body>
+</html>

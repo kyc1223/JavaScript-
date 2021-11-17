@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+ .slidecontainer {
+  width: 100%;
+}
+
+.slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 15px;
+  border-radius: 5px;
+  background: #d3d3d3;
+  outline: none;
+  opacity: 0.7;
+  -webkit-transition: .2s;
+  transition: opacity .2s;
+}
+
+.slider:hover {
+  opacity: 1;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: #04AA6D;
+  cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: #04AA6D;
+  cursor: pointer;
+}
+</style>
+<script> // 전역 변수부
+    var inCanvas, inCtx, inPaper; // 입력 캔버스 관련
+    var outCanvas, outCtx, outPaper; // 출력 캔버스 관련
+    var inImage, outImage; // 이미지의 배열
+    var inH, inW, outH, outW; // 이미지의 크기
+    var inFile; // 입력 RAW 파일
+</script>
+<script> // 공통 함수부
+    // 초기화 함수
+    function init() {
+        inCanvas = document.getElementById('inCanvas'); // 도화지에 접근
+        inCtx = inCanvas.getContext('2d'); // 물감,붓이 들은 통
+        outCanvas = document.getElementById('outCanvas'); // 도화지에 접근
+        outCtx = outCanvas.getContext('2d'); // 물감,붓이 들은 통
+    }
+    // 공통 함수부
+    function loadImage() {
+        inFile = document.getElementById('inFile').files[0]; // 선택한 파일
+        // *중요* 이미지의 크기를 파악!
+        inH = inW = Math.sqrt(inFile.size);  // 512, 512
+        // 입력 이미지의 메모리 할당
+        inImage = new Array(inH); 
+        for (var i=0; i<inH; i++)
+            inImage[i] = new Array(inW);
+        // 캔버스 크기를 결정
+        inCanvas.height = inH;
+        inCanvas.width = inW;            
+        // 파일 --> 메모리로 로딩
+        var reader = new FileReader();
+        reader.readAsBinaryString(inFile);
+        reader.onload = function () {
+            var blob = reader.result; // 파일을 덩어리(Blob)으로 가져옴.
+            // 덩어리(Blob)에서 한점한점 뽑아서,,, 우리꺼 배열에 넣기!
+            for (var i=0; i<inH; i++) {
+                for (var k=0; k<inW; k++) {
+                    var sPixel = (i*inH + k); // 시작위치
+                    var ePixel = (i*inH + k) + 1; // 끝위치
+                    inImage[i][k] = blob.slice(sPixel, ePixel);
+                }
+            }
+            // ** 입력 메모리의 내용을 화면에 출력하기. **
+            inPaper = inCtx.createImageData(inH, inW); // 캔버스에 종이 붙이기 (크기는 캔버스 동일)
+            for (var i=0; i<inH; i++) {
+                for (var k=0; k<inW; k++) {
+                    var pix = inImage[i][k].charCodeAt(0); // 이상한 문자(꽯)를 숫자(231)로.
+                    inPaper.data[(i*inH + k) * 4 + 0] = pix; // Red
+                    inPaper.data[(i*inH + k) * 4 + 1] = pix; // Green
+                    inPaper.data[(i*inH + k) * 4 + 2] = pix; // Blue
+                    inPaper.data[(i*inH + k) * 4 + 3] = 255; // Alpha
+                }
+            }
+            inCtx.putImageData(inPaper,0,0); // (0,0) 좌표에 붙여라.
+        }        
+    }
+    function displayImage() {
+        // ** 출력 메모리의 내용을 화면에 출력하기. **
+        outPaper = outCtx.createImageData(outH, outW); // 캔버스에 종이 붙이기 (크기는 캔버스 동일)
+        for (var i=0; i<outH; i++) {
+            for (var k=0; k<outW; k++) {
+                var pix = outImage[i][k].charCodeAt(0); // 이상한 문자(꽯)를 숫자(231)로.
+                outPaper.data[(i*outH + k) * 4 + 0] = pix; // Red
+                outPaper.data[(i*outH + k) * 4 + 1] = pix; // Green
+                outPaper.data[(i*outH + k) * 4 + 2] = pix; // Blue
+                outPaper.data[(i*outH + k) * 4 + 3] = 255; // Alpha
+            }
+        }
+        outCtx.putImageData(outPaper,0,0); // (0,0) 좌표에 붙여라.
+    }
+    function saveImage() {
+    }
+</script>
+<script> // 영상처리 함수부
+
+function blurrSlide() { // 크기를 지정
+     // 중요! 출력 영상의 크기를 결정 --> 알고리즘에 의존
+    outH = inH;
+    outW = inW;
+    // 캔버스 크기를 결정
+    outCanvas.height = outH;
+    outCanvas.width = outW;       
+    // 출력 이미지의 메모리 할당
+    outImage = new Array(outH); 
+    for (var i=0; i<outH; i++)
+        outImage[i] = new Array(outW);
+
+    // 화소영역처리 (마스크)
+    var slider = document.getElementById("mySlider");
+    var mSize = parseInt(slider.value);
+    if (mSize % 2 == 0)
+        mSize ++;
+
+    var mask = new Array(mSize); 
+    for (var i=0; i<mSize; i++)
+        mask[i] = new Array(mSize);
+
+    for(var i=0; i<mSize; i++) {
+        for(var k=0; k<mSize; k++) {
+            mask[i][k] = 1.0 / (mSize*mSize);
+        }
+    }
+    // 임시 입력 배열 (입력 배열 + (mSize - 1) )
+    var hSize = mSize - 1; // 임시 입력 배열 크기
+    var tmpInImage = new Array(inH+hSize); 
+    for (var i=0; i<inH+hSize; i++)
+        tmpInImage[i] = new Array(inW+hSize);
+    // 임시 입력 배열 초기화 (127)
+    for(var i=0; i<inH+hSize; i++) {
+        for(var k=0; k<inW+hSize; k++) {
+            tmpInImage[i][k] = String.fromCharCode(127);
+        }
+    }
+    // 입력 배열 --> 임시 입력 배열 
+    for(var i=0; i<inH; i++) {
+        for(var k=0; k<inW; k++) {
+            tmpInImage[i+1][k+1] = inImage[i][k];
+        }
+    }
+    // 임시 출력 배열
+    var tmpOutImage = new Array(outH); 
+    for (var i=0; i<outH; i++)
+        tmpOutImage[i] = new Array(outW);
+
+    // *** 영상처리 알고리즘 ****  --> 회선 연산
+    for(var i=0; i<inH; i++) {
+        for(var k=0; k<inW; k++) {
+            var S = 0.0;
+            for (var m=0; m<mSize; m++) {
+                for (var n=0; n<mSize; n++) {
+                    S += tmpInImage[i+m][k+n].charCodeAt(0) * mask[m][n];
+                }
+            }
+            tmpOutImage[i][k] = S;
+        }
+    }
+    // 후처리 작업 (마스크 합계가 0이면 127 정도를 더하기)
+    // for(var i=0; i<outH; i++) {
+    //     for(var k=0; k<outW; k++) {
+    //         tmpOutImage[i][k] += 127.0;
+    //     }
+    // }
+
+    // 임시 출력 배열 --> 출력 배열
+    for(var i=0; i<outH; i++) {
+        for(var k=0; k<outW; k++) {
+            var v = tmpOutImage[i][k];
+            if (v > 255.0)
+                v = 255.0;
+            if (v < 0.0)
+                v = 0.0;
+            outImage[i][k] = String.fromCharCode(parseInt(v));
+        }
+    }
+    // ***********************
+    displayImage();
+}
+
+</script>
+
+</head>
+<body onload='init()'>
+    <form>
+        <input type ='file' id='inFile' onchange="loadImage()" /> <br>
+        <br>
+        <div class="slidecontainer">
+            <input type="range" id="mySlider" min="3" max="30" value="5" class='slider' onchange="blurrSlide()">
+        </div>
+        <br>
+        <canvas id='inCanvas' style="background-color:rgb(144, 219, 219)"></canvas>
+        <canvas id='outCanvas' style="background-color:rgb(189, 162, 165)"></canvas>
+    </form>
+    
+</body>
+
+</html>

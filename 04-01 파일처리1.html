@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script>
+// 파일의 종류 2가지 : 텍스트 파일, 바이너리 파일(이진 파일)
+// 확장명 : txt, html, java ... ==> 텍스트 파일
+// 확장명 : docx, hwp, xlsx, pptx, jpg, png, bmp .... ==> 바이너리 파일
+// ** 텍스트 파일 일기 **
+function openText() {
+    txtFile = document.getElementById('selectFile').files[0]; // 선택한 파일
+    var reader = new FileReader(); // 파일 객체를 준비
+    reader.onload = function () { // 익명 함수
+        mydiv.innerText = reader.result;
+    }
+    reader.readAsText(txtFile);
+}
+
+</script>
+</head>
+<body>
+    <input type ='file' id='selectFile' onchange="openText()" />
+    <div id='mydiv'>
+        .....
+    </div>
+    
+
+</body>
+</html>
+

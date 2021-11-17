@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head> 
+<script>  
+    // 전역 변수부
+    var inCanvas, inCtx, inPaper; // 입력 캔버스 관련
+    var outCanvas, outCtx, outPaper; // 출력 캔버스 관련
+    var inImage, outImage; // 이미지의 배열
+    var inH, inW, outH, outW; // 이미지의 크기
+    var inFile; // 입력 RAW 파일
+</script>
+<script>  
+    // 초기화 함수
+    function init() {
+        inCanvas = document.getElementById('inCanvas'); // 도화지에 접근
+        inCtx = inCanvas.getContext('2d'); // 물감,붓이 들은 통
+        outCanvas = document.getElementById('outCanvas'); // 도화지에 접근
+        outCtx = outCanvas.getContext('2d'); // 물감,붓이 들은 통
+    }
+    // 공통 함수부
+    function loadImage() {
+        inFile = document.getElementById('inFile').files[0]; // 선택한 파일
+        // *중요* 이미지의 크기를 파악!
+        inH = inW = Math.sqrt(inFile.size);  // 512, 512
+        // 입력 이미지의 메모리 할당
+        inImage = new Array(inH); 
+        for (var i=0; i<inH; i++)
+            inImage[i] = new Array(inW);
+        // 캔버스 크기를 결정
+        inCanvas.height = inH;
+        inCanvas.width = inW;            
+        // 파일 --> 메모리로 로딩
+        var reader = new FileReader();
+        reader.readAsBinaryString(inFile);
+        reader.onload = function () {
+            var blob = reader.result; // 파일을 덩어리(Blob)으로 가져옴.
+            // 덩어리(Blob)에서 한점한점 뽑아서,,, 우리꺼 배열에 넣기!
+            for (var i=0; i<inH; i++) {
+                for (var k=0; k<inW; k++) {
+                    var sPixel = (i*inH + k); // 시작위치
+                    var ePixel = (i*inH + k) + 1; // 끝위치
+                    inImage[i][k] = blob.slice(sPixel, ePixel);
+                }
+            }
+            // ** 입력 메모리의 내용을 화면에 출력하기. **
+            inPaper = inCtx.createImageData(inH, inW); // 캔버스에 종이 붙이기 (크기는 캔버스 동일)
+            for (var i=0; i<inH; i++) {
+                for (var k=0; k<inW; k++) {
+                    var pix = inImage[i][k].charCodeAt(0); // 이상한 문자(꽯)를 숫자(231)로.
+                    inPaper.data[(i*inH + k) * 4 + 0] = pix; // Red
+                    inPaper.data[(i*inH + k) * 4 + 1] = pix; // Green
+                    inPaper.data[(i*inH + k) * 4 + 2] = pix; // Blue
+                    inPaper.data[(i*inH + k) * 4 + 3] = 255; // Alpha
+                }
+            }
+            inCtx.putImageData(inPaper,0,0); // (0,0) 좌표에 붙여라.
+        }        
+    }
+    function displayImage() {
+        // ** 출력 메모리의 내용을 화면에 출력하기. **
+        outPaper = outCtx.createImageData(outH, outW); // 캔버스에 종이 붙이기 (크기는 캔버스 동일)
+        for (var i=0; i<outH; i++) {
+            for (var k=0; k<outW; k++) {
+                var pix = outImage[i][k].charCodeAt(0); // 이상한 문자(꽯)를 숫자(231)로.
+                outPaper.data[(i*outH + k) * 4 + 0] = pix; // Red
+                outPaper.data[(i*outH + k) * 4 + 1] = pix; // Green
+                outPaper.data[(i*outH + k) * 4 + 2] = pix; // Blue
+                outPaper.data[(i*outH + k) * 4 + 3] = 255; // Alpha
+            }
+        }
+        outCtx.putImageData(outPaper,0,0); // (0,0) 좌표에 붙여라.
+    }
+    function saveImage() {
+    }
+</script>
+<script>  
+    // 영상 처리 함수부
+    function addImage() {
+        // 중요! 출력 영상의 크기를 결정 --> 알고리즘에 의존
+        outH = inH;
+        outW = inW;
+        // 캔버스 크기를 결정
+        outCanvas.height = outH;
+        outCanvas.width = outW;       
+        // 출력 이미지의 메모리 할당
+        outImage = new Array(outH); 
+        for (var i=0; i<outH; i++)
+            outImage[i] = new Array(outW);
+
+        var value = parseInt(prompt("숫자를 입력:", "100"));
+        for(var i=0; i<inH; i++) {
+            for(var k=0; k<inW; k++) {
+                // 문자 --> 숫자
+                var pixel = inImage[i][k].charCodeAt(0);
+                // ** 진짜 핵심 알고리즘
+                if (pixel + value > 255)
+                    pixel = 255;
+                else 
+                    pixel += value;
+                // 숫자 --> 문자
+                outImage[i][k] = String.fromCharCode(pixel);
+            }
+        }
+        displayImage();
+    }
+
+    function zoomOut() {
+        var scale = parseInt(prompt("축소 배율:", "2"));
+        // 중요! 출력 영상의 크기를 결정 --> 알고리즘에 의존
+        outH =  parseInt(inH/scale);
+        outW =  parseInt(inW/scale);
+        // 캔버스 크기를 결정
+        outCanvas.height = outH;
+        outCanvas.width = outW;       
+        // 출력 이미지의 메모리 할당
+        outImage = new Array(outH); 
+        for (var i=0; i<outH; i++)
+            outImage[i] = new Array(outW);
+        for(var i=0; i<inH; i++) {
+            for(var k=0; k<inW; k++) {
+                // ** 진짜 핵심 알고리즘
+                outImage[parseInt(i/scale)][parseInt(k/scale)]  = inImage[i][k];
+            }
+        }
+        displayImage();
+    }
+
+    function zoomIn() {
+        var scale = parseInt(prompt("확대 배율:", "2"));
+        // 중요! 출력 영상의 크기를 결정 --> 알고리즘에 의존
+        outH =  parseInt(inH*scale);
+        outW =  parseInt(inW*scale);
+        // 캔버스 크기를 결정
+        outCanvas.height = outH;
+        outCanvas.width = outW;       
+        // 출력 이미지의 메모리 할당
+        outImage = new Array(outH); 
+        for (var i=0; i<outH; i++)
+            outImage[i] = new Array(outW);
+        // 출력 이미지를 초기화 시키기
+        for(var i=0; i<outH; i++) {
+            for(var k=0; k<outW; k++) {
+                outImage[i][k] = String.fromCharCode(0);
+            }
+        }
+
+        // 영상처리 알고리즘
+        for(var i=0; i<inH; i++) {
+            for(var k=0; k<inW; k++) {
+                // ** 진짜 핵심 알고리즘
+                outImage[parseInt(i*scale)][parseInt(k*scale)]  = inImage[i][k];
+            }
+        }
+        displayImage();
+    }
+
+    function zoomIn2() {
+        var scale = parseInt(prompt("확대 배율:", "2"));
+        // 중요! 출력 영상의 크기를 결정 --> 알고리즘에 의존
+        outH =  parseInt(inH*scale);
+        outW =  parseInt(inW*scale);
+        // 캔버스 크기를 결정
+        outCanvas.height = outH;
+        outCanvas.width = outW;       
+        // 출력 이미지의 메모리 할당
+        outImage = new Array(outH); 
+        for (var i=0; i<outH; i++)
+            outImage[i] = new Array(outW);
+        // 출력 이미지를 초기화 시키기
+        for(var i=0; i<outH; i++) {
+            for(var k=0; k<outW; k++) {
+                outImage[i][k] = String.fromCharCode(0);
+            }
+        }
+
+        // 영상처리 알고리즘
+        for(var i=0; i<outH; i++) {
+            for(var k=0; k<outW; k++) {
+                // ** 진짜 핵심 알고리즘
+                outImage[i][k]  = inImage[parseInt(i/scale)][parseInt(k/scale)];
+            }
+        }
+        displayImage();
+    }
+
+</script>
+
+</head>
+<body onload="init()">
+    <input type ='file' id='inFile' onchange="loadImage()" /> <br>
+    <input type='button' id='addImage' value='밝게하기' onclick="addImage()"/>
+    <input type='button' id='zoomOut' value='축소하기' onclick="zoomOut()"/>
+    <input type='button' id='zoomIn' value='확대하기(포워딩)' onclick="zoomIn()"/>
+    <input type='button' id='zoomIn2' value='확대하기(백워딩)' onclick="zoomIn2()"/>
+    <br>
+    <canvas id='inCanvas' style="background-color:rgb(144, 219, 219)"></canvas>
+    <canvas id='outCanvas' style="background-color:rgb(189, 162, 165)"></canvas>
+</body>
+</html>
+
+
+

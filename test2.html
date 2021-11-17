@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script>
+        // 전역 변수(*중요*)
+        var inCanvas, inCtx, outCanvas, outCtx;  // 입력 캔버스 관련
+        var inFile, inImageArray, outImageArray;  // 입력 파일 및 배열
+        var inWidth, inHeight, outWidth, outHeight;  // 입력 영상의 폭과 높이
+        var inPaper, outPaper; // 캔버스에는 한점한점이 안찍힘. 대신 캔버스에 종이를 붙임.
+        function init() {
+            inCanvas = document.getElementById('inCanvas');
+            inCtx = inCanvas.getContext('2d');
+            outCanvas = document.getElementById('outCanvas');
+            outCtx = outCanvas.getContext('2d');
+        }
+
+        function openImage() {
+            inFile = document.getElementById('selectFile').files[0];
+            // 그림파일 --> 이미지 객체
+            var inImage = new Image(); // 빈 이미지 객체 생성
+            
+            inImage.src = inFile.name;            
+            inImage.crossOrigin = "Anonymous";
+
+            inImage.onload = function() {
+                // 입력 파일의 크기를 알아냄 (중요!)
+                inWidth = inImage.width;
+                inHeight = inImage.height;
+                // 캔버스 크기를 결정
+                inCanvas.width = inWidth;
+                inCanvas.height = inHeight;
+                inCtx.drawImage(inImage,0,0,inWidth, inHeight);
+                // 입력 3차원 배열을 준비
+                inImageArray = new Array(3); // 3장짜리 배열 (R, G, B)
+                for(var i=0; i<3; i++) {
+                    inImageArray[i] = new Array(inHeight);
+                    for(var k=0; k<inHeight; k++)
+                        inImageArray[i][k] = new Array(inWidth);
+                }
+                // 출력된 캔버스에서 픽셀값 뽑기
+                var imageData = inCtx.getImageData(0,0,inWidth, inHeight);
+                var R,G,B,Alpha;
+                for (var i=0; i<inHeight; i++) {
+                    for(var k=0; k<inWidth; k++) {
+                        px = (i * inWidth + k) * 4; // 1픽셀 = 4byte
+                        R = imageData.data[px + 0];
+                        G = imageData.data[px + 1];
+                        B = imageData.data[px + 2];
+                        // Alpha = imageData.data[px + 3];
+                        inImageArray[0][i][k] = String.fromCharCode(R);
+                        inImageArray[1][i][k] = String.fromCharCode(G);
+                        inImageArray[2][i][k] = String.fromCharCode(B);
+                    }
+                }
+            }           
+
+        }        
+       ///////  영상 처리 함수 모음 //////////
+        function displayImage() {
+              // 캔버스 크기를 결정
+              outCanvas.height = outHeight;
+            outCanvas.width = outWidth;
+
+            var R, G, B;
+            outPaper = outCtx.createImageData(outWidth, outHeight);
+            for(var i=0; i<outHeight; i++) {
+                for (var k=0; k<outWidth; k++) {
+                    R = outImageArray[0][i][k].charCodeAt(0); // Byte 문자를 숫자로.
+                    G = outImageArray[1][i][k].charCodeAt(0); // Byte 문자를 숫자로.
+                    B = outImageArray[2][i][k].charCodeAt(0); // Byte 문자를 숫자로.
+                    outPaper.data[(i*outWidth + k) * 4 + 0] = R;
+                    outPaper.data[(i*outWidth + k) * 4 + 1] = G;
+                    outPaper.data[(i*outWidth + k) * 4 + 2] = B;
+                    outPaper.data[(i*outWidth + k) * 4 + 3] = 255;
+                }
+            }
+            outCtx.putImageData(outPaper, 0, 0);
+        }
+
+        function equalImage() {
+            // (중요!) 출력 영상의 크기를 결정... 알고리즘에 따름.
+            outHeight = inHeight;
+            outWidth = inWidth;
+            // 출력 3차원 배열을 준비
+            outImageArray = new Array(3); // 512짜리 1차원 배열
+            for (var i=0; i<3; i++) {
+                outImageArray[i] = new Array(outHeight); // 512짜리 1차원 배열
+                for(var k=0; k<outHeight; k++) 
+                    outImageArray[i][k] = new Array(outWidth);
+            }
+            
+            // ***** 진짜 영상처리 알고리즘 *****
+            for (var rgb=0; rgb<3; rgb++) {
+                for(var i=0; i<inHeight; i++) {
+                    for (var k=0; k<inWidth; k++) {
+                        outImageArray[rgb][i][k] = inImageArray[rgb][i][k];
+                    }
+                }
+            }
+            displayImage();
+        }
+        function ImageProcessing(selectNum) { // 선택번호를 받음.
+            switch (selectNum.value) {
+                case "1" : // 동일 영상
+                    equalImage();
+                case "2" : // 밝게 하기
+                    addImage();
+                    break;
+                case "4" :
+                    grayScale();
+                    break;
+            }
+        }
+        
+    </script>
+
+</head>
+<body onload='init()'>
+    <form>
+        <input type='file' id='selectFile' onchange='openImage()'/>
+        <label> 영상 처리 </label>
+        <select name='imageAlgo' onchange="ImageProcessing(this.form.imageAlgo)">
+            <option value = 0> 선택 하세요 </option>
+            <optgroup label="화소 점 처리">
+                <option value = "1"> 동일 영상 처리</option>
+                <option value = "2"> 영상 밝게 하기</option>
+                <option value = "4"> 그레이스케일 변경</option>
+            </optgroup>
+        </select>
+
+        <br>
+        <canvas id='inCanvas' style='background-color:rgb(248, 209, 164)'></canvas>
+        <canvas id='outCanvas' style='background-color:rgb(164, 248, 192)'></canvas>
+        </form>
+</body>
+</html>

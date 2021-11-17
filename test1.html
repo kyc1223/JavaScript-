@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script>
+        // 파일을 선택하고, 그 파일의 내용을 출력
+        // 파일의 종류 : 텍스트파일, 바이너리파일(이진)
+        // 텍스트 파일 : *.txt, .html, .ini, .java ...
+        //    --> 메모장에서 열어서 글자처럼 보이는 파일
+        // 바이너리 파일 : 1byte == 8bit. 3bit:x,  2bit:xx...
+        //     .png, .jpg, .hwp, xlsx, .docx .....
+        // ** 텍스트 파일 읽기 **
+        function openTextFile() {
+            inputFile = document.getElementById('selectFile').files[0];
+            var reader = new FileReader(); // 파일 객체 준비
+            reader.readAsText(inputFile);
+            reader.onload = function () {  // 익명(anonymous)
+                    notice.innerText = reader.result;
+            }
+        }
+    </script>
+</head>
+<body>
+    <input type='file' id='selectFile' onchange='openTextFile()'/>
+    <div id='notice'> .... </div>
+</body>
+</html>
